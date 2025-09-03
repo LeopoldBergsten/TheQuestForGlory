@@ -9,15 +9,26 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float decelerationSpeed;
     [SerializeField] private float turnSpeed;
     [SerializeField] private float sprintMultiplier;
+    [SerializeField, Range(-1, 1)] private float maxVelocityDotUntilTurnSpeed;
     private Vector3 velocity;
+    private Vector3 movementDirection;
     private CharacterController controller;
 
     [Header("Player Camera Values")]
     [SerializeField, Range(0.1f, 9f)] private float cameraSensitivity;
     [SerializeField] private float cameraYRotationLimit;
+    [SerializeField] private AnimationCurve headBobPositionCurve;
+    [SerializeField] private AnimationCurve headBobRotationCurve;
+    [SerializeField] private float headBobAnimationCurveLength;
+    [SerializeField] private float headBobStrength;
+    [SerializeField] private float headBobSpeed;
+    [SerializeField] private float handBobRotationStrength;
+    [SerializeField] private float handBobPositionStrength;
+    [SerializeField] private float handBobPositionOffset;
+    [SerializeField] private Transform equippedUI;
+    private Vector3 equippedUIStartPos;
+    private float headBobTime;
     Vector2 cameraRotation = Vector2.zero;
-
-
 
     [Header("Input")]
     [SerializeField] private InputActionReference lookAction;
@@ -45,6 +56,11 @@ public class PlayerController : MonoBehaviour
         sprintAction.action.Disable();
     }
 
+    private void Start()
+    {
+        equippedUIStartPos = equippedUI.localPosition;
+    }
+
     private void Update()
     {
         CameraMovement();
@@ -58,7 +74,19 @@ public class PlayerController : MonoBehaviour
         var cameraXQuaternion = Quaternion.AngleAxis(cameraRotation.x, Vector3.up);
         var cameraYQuaternion = Quaternion.AngleAxis(cameraRotation.y, Vector3.left);
 
-        Camera.main.transform.localRotation = cameraXQuaternion * cameraYQuaternion;
+        Camera.main.transform.localRotation = (cameraXQuaternion * cameraYQuaternion);
+        Camera.main.transform.localRotation *= Quaternion.Euler((headBobRotationCurve.Evaluate(headBobTime) * headBobStrength), 0, 0);
+        Camera.main.transform.localPosition = new Vector3((headBobPositionCurve.Evaluate(headBobTime) * headBobStrength), 0, 0);
+
+        equippedUI.transform.localRotation = Quaternion.Euler(-(headBobRotationCurve.Evaluate(headBobTime) * handBobRotationStrength), 0, 0);
+        equippedUI.localPosition = new Vector3(equippedUI.localPosition.x, -(headBobPositionCurve.Evaluate(headBobTime) * handBobPositionStrength) - handBobPositionOffset, equippedUI.localPosition.z);
+
+        if (headBobTime > headBobAnimationCurveLength)
+        {
+            headBobTime = 0;
+        }
+
+        headBobTime += Time.deltaTime * headBobSpeed * controller.velocity.magnitude;
     }
 
     private void PlayerMovement()
@@ -74,15 +102,37 @@ public class PlayerController : MonoBehaviour
         movementVector = cameraOrientation * movementVector;
 
         float sprintInput = sprintAction.action.ReadValue<float>();
+        bool isSprinting = sprintInput > 0.5f;
 
-        if (sprintInput > 0.5f)
+        Debug.Log("movement vector " + movementVector.magnitude);
+
+        if (movementVector.magnitude > .25f && Vector3.Dot(movementDirection.normalized, movementVector) <= maxVelocityDotUntilTurnSpeed)
         {
-            Debug.Log(moveSpeed * sprintMultiplier);
-            velocity = movementVector * (moveSpeed * sprintMultiplier);
+            float currentTurnSpeed = 0;
+            if(isSprinting)
+            {
+                currentTurnSpeed = turnSpeed / sprintMultiplier;
+            }
+            else
+            {
+                currentTurnSpeed = turnSpeed;
+            }
+
+            movementDirection = Vector3.Lerp(movementDirection, movementVector, turnSpeed * Time.deltaTime);
         }
         else
         {
-            velocity = movementVector * moveSpeed;
+            movementDirection = movementVector;
+        }
+
+
+        if (isSprinting)
+        {
+            velocity = movementDirection * (moveSpeed * sprintMultiplier);
+        }
+        else
+        {
+            velocity = movementDirection * moveSpeed;
         }
 
         float velocityAdjustmentSpeed = 1;
