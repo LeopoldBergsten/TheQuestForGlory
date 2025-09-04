@@ -9,6 +9,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float decelerationSpeed;
     [SerializeField] private float turnSpeed;
     [SerializeField] private float sprintMultiplier;
+    [SerializeField] private float gravityModifier;
     [SerializeField, Range(-1, 1)] private float maxVelocityDotUntilTurnSpeed;
     private Vector3 velocity;
     private Vector3 movementDirection;
@@ -22,11 +23,6 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float headBobAnimationCurveLength;
     [SerializeField] private float headBobStrength;
     [SerializeField] private float headBobSpeed;
-    [SerializeField] private float handBobRotationStrength;
-    [SerializeField] private float handBobPositionStrength;
-    [SerializeField] private float handBobPositionOffset;
-    [SerializeField] private Transform equippedUI;
-    private Vector3 equippedUIStartPos;
     private float headBobTime;
     Vector2 cameraRotation = Vector2.zero;
 
@@ -56,11 +52,6 @@ public class PlayerController : MonoBehaviour
         sprintAction.action.Disable();
     }
 
-    private void Start()
-    {
-        equippedUIStartPos = equippedUI.localPosition;
-    }
-
     private void Update()
     {
         CameraMovement();
@@ -77,9 +68,6 @@ public class PlayerController : MonoBehaviour
         Camera.main.transform.localRotation = (cameraXQuaternion * cameraYQuaternion);
         Camera.main.transform.localRotation *= Quaternion.Euler((headBobRotationCurve.Evaluate(headBobTime) * headBobStrength), 0, 0);
         Camera.main.transform.localPosition = new Vector3((headBobPositionCurve.Evaluate(headBobTime) * headBobStrength), 0, 0);
-
-        equippedUI.transform.localRotation = Quaternion.Euler(-(headBobRotationCurve.Evaluate(headBobTime) * handBobRotationStrength), 0, 0);
-        equippedUI.localPosition = new Vector3(equippedUI.localPosition.x, -(headBobPositionCurve.Evaluate(headBobTime) * handBobPositionStrength) - handBobPositionOffset, equippedUI.localPosition.z);
 
         if (headBobTime > headBobAnimationCurveLength)
         {
@@ -148,6 +136,7 @@ public class PlayerController : MonoBehaviour
 
         Vector3 currentVelocity = Vector3.Lerp(controller.velocity, velocity, velocityAdjustmentSpeed * Time.deltaTime);
         currentVelocity = new Vector3(currentVelocity.x, 0, currentVelocity.z);
+        currentVelocity.y += gravityModifier * Time.deltaTime;
         controller.Move(currentVelocity * Time.deltaTime);
     }
 }
