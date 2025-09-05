@@ -13,6 +13,7 @@ public class RecognitionTest : MonoBehaviour
     [SerializeField] private Transform gestureOnScreenPrefab;
 
     [SerializeField] private Transform[] objToInstantiate;
+    [SerializeField] private Transform instantiateParentCanvas;
 
     private List<Gesture> trainingSet = new List<Gesture>();
 
@@ -30,9 +31,11 @@ public class RecognitionTest : MonoBehaviour
     private LineRenderer currentGestureLineRenderer;
 
     private bool recognized;
+    private bool allowDrawing = false;
 
     [SerializeField] private InputActionReference drawAction;
     [SerializeField] private InputActionReference toggleDrawAction;
+    [SerializeField] private InputActionReference recognizeDrawingAction;
     [SerializeField] private InputActionReference mousePos;
 
     private void OnEnable()
@@ -40,7 +43,9 @@ public class RecognitionTest : MonoBehaviour
         drawAction.action.Enable();
         toggleDrawAction.action.Enable();
         mousePos.action.Enable();
-        toggleDrawAction.action.performed += OnToggleDraw;
+        recognizeDrawingAction.action.Enable();
+        recognizeDrawingAction.action.started += OnRecognizeDrawing;
+        toggleDrawAction.action.started += OnToggleDraw;
     }
 
     private void OnDisable()
@@ -48,6 +53,8 @@ public class RecognitionTest : MonoBehaviour
         drawAction.action.Disable();
         toggleDrawAction.action.Disable();
         mousePos.action.Disable();
+        recognizeDrawingAction.action.Disable();
+        recognizeDrawingAction.action.started -= OnRecognizeDrawing;
         toggleDrawAction.action.performed -= OnToggleDraw;
     }
 
@@ -73,58 +80,76 @@ public class RecognitionTest : MonoBehaviour
 
     private void Update()
     {
-        if (drawAction.action.IsPressed())
+        if (drawAction.action.IsPressed() && allowDrawing)
         {
-
             OnDraw();
+        }
+        else
+        {
+            print("yup");
         }
     }
 
 
     private void OnDraw()
     {
-        print("In On Draw function");
-        //virtualKeyPosition = new Vector2(mousePos.action.ReadValue<Vector2>().x, mousePos.action.ReadValue<Vector2>().y);
         virtualKeyPosition = new Vector2(Mouse.current.position.ReadValue().x, Mouse.current.position.ReadValue().y);
-        if (drawArea.Contains(virtualKeyPosition)) // make it a return statement.
+
+        if (!drawArea.Contains(virtualKeyPosition)) { return; }
+
+        if (drawAction.action.WasPressedThisFrame())
         {
-            if (drawAction.action.WasPressedThisFrame())
+            if (recognized)
             {
-                if (recognized)
-                {
-                    recognized = false;
-                    strokeId = -1;
+                recognized = false;
+                strokeId = -1;
 
-                    points.Clear();
-
-                    foreach (LineRenderer lineRenderer in gestureLinesRenderer)
-                    {
-                        lineRenderer.positionCount = 0;
-                        Destroy(lineRenderer.gameObject);
-                    }
-
-                    gestureLinesRenderer.Clear();
-                }
-
-                ++strokeId;
-
-                Transform tmpGesture = Instantiate(gestureOnScreenPrefab, transform.position, transform.rotation) as Transform;
-                currentGestureLineRenderer = tmpGesture.GetComponent<LineRenderer>();
-
-                gestureLinesRenderer.Add(currentGestureLineRenderer);
-
-                vertexCount = 0;
             }
-            points.Add(new Point(virtualKeyPosition.x, -virtualKeyPosition.y, strokeId));
 
-            currentGestureLineRenderer.positionCount = ++vertexCount;
-            //currentGestureLineRenderer.SetPosition(vertexCount - 1, new Vector3(virtualKeyPosition.x, virtualKeyPosition.y, 10)); Draws it on canvas ish, may be better.
-            currentGestureLineRenderer.SetPosition(vertexCount - 1,  Camera.main.ScreenToWorldPoint(new Vector3(virtualKeyPosition.x, virtualKeyPosition.y, 10)));
+            ++strokeId;
+
+            Transform tmpGesture = Instantiate(gestureOnScreenPrefab, transform.position, transform.rotation, instantiateParentCanvas) as Transform;
+            currentGestureLineRenderer = tmpGesture.GetComponent<LineRenderer>();
+
+            gestureLinesRenderer.Add(currentGestureLineRenderer);
+
+            vertexCount = 0;
         }
+        points.Add(new Point(virtualKeyPosition.x, -virtualKeyPosition.y, strokeId));
+
+        currentGestureLineRenderer.positionCount = ++vertexCount;
+        //currentGestureLineRenderer.SetPosition(vertexCount - 1, new Vector3(virtualKeyPosition.x, virtualKeyPosition.y, 10)); //Draws it on canvas ish, may be better.... No it doesn't :(
+        currentGestureLineRenderer.SetPosition(vertexCount - 1,  Camera.main.ScreenToWorldPoint(new Vector3(virtualKeyPosition.x, virtualKeyPosition.y, 10)));
     }
 
-    private void OnToggleDraw(InputAction.CallbackContext context) // rn just recognize but later will disable drawing on and off. 
+    private void OnToggleDraw(InputAction.CallbackContext context)
     {
+        print("Here");
+        if(!allowDrawing)
+        {
+            print("where");
+            allowDrawing = true;
+            return;
+        }
+
+        print("There");
+        allowDrawing = false;
+        points.Clear();
+
+        if (gestureLinesRenderer != null)
+        {
+            foreach (LineRenderer lineRenderer in gestureLinesRenderer)
+            {
+                lineRenderer.positionCount = 0;
+                Destroy(lineRenderer.gameObject);
+            }
+        }
+        gestureLinesRenderer.Clear(); 
+    }
+
+    private void OnRecognizeDrawing(InputAction.CallbackContext context)
+    {
+        if (!allowDrawing) { return; }
         Recognize();
     }
 
@@ -134,6 +159,16 @@ public class RecognitionTest : MonoBehaviour
 
         Gesture candidate = new Gesture(points.ToArray());
         Result gestureResult = PointCloudRecognizer.Classify(candidate, trainingSet.ToArray());
+
+        points.Clear();
+
+        foreach (LineRenderer lineRenderer in gestureLinesRenderer)
+        {
+            lineRenderer.positionCount = 0;
+            Destroy(lineRenderer.gameObject);
+        }
+
+        gestureLinesRenderer.Clear();
 
         if (gestureResult.Score < 0.9)
         {
@@ -152,6 +187,7 @@ public class RecognitionTest : MonoBehaviour
             {
                 Instantiate(obj);
                 print("Succesfull");
+                
             }
         }
     }

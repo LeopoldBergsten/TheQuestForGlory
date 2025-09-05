@@ -55,7 +55,7 @@
                     "name": "Jump",
                     "type": "Button",
                     "id": "f1ba0d36-48eb-4cd5-b651-1c94a6531f70",
-                    "expectedControlType": "Button",
+                    "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
@@ -100,6 +100,15 @@
                     "name": "Draw",
                     "type": "Button",
                     "id": "db0a0363-ed21-4f8f-856a-147ebac9d075",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "RecognizeDrawing",
+                    "type": "Button",
+                    "id": "43ff517d-42b5-4c75-b3de-d9f5c4fa3030",
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
@@ -495,7 +504,7 @@
                 {
                     "name": "",
                     "id": "0f2e71e3-adbd-4ee2-9528-51fce9d978c8",
-                    "path": "<Keyboard>/tab",
+                    "path": "<Keyboard>/space",
                     "interactions": "",
                     "processors": "",
                     "groups": ";Keyboard&Mouse",
@@ -511,6 +520,17 @@
                     "processors": "",
                     "groups": ";Keyboard&Mouse",
                     "action": "Draw",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "6bd5a9da-4dc9-479e-ad81-b238d05e558f",
+                    "path": "<Mouse>/rightButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "RecognizeDrawing",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }
